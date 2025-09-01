@@ -1,3 +1,8 @@
+"""Process and plot hybridisation results.
+
+Обработка и построение графиков результатов гибридизации.
+"""
+
 import json
 from itertools import chain
 from random import Random

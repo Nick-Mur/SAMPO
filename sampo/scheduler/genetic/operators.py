@@ -1,3 +1,8 @@
+"""Operators and fitness functions for genetic scheduling.
+
+Операторы и функции приспособленности для генетического планирования.
+"""
+
 import math
 import random
 from copy import deepcopy
@@ -10,8 +15,11 @@ from deap.base import Toolbox
 
 from sampo.api.genetic_api import ChromosomeType, FitnessFunction, Individual
 from sampo.base import SAMPO
-from sampo.scheduler.genetic.converter import (convert_schedule_to_chromosome, convert_chromosome_to_schedule,
-                                               ScheduleGenerationScheme)
+from sampo.scheduler.genetic.converter import (
+    convert_schedule_to_chromosome,
+    convert_chromosome_to_schedule,
+    ScheduleGenerationScheme,
+)
 from sampo.scheduler.lft.base import RandomizedLFTScheduler
 from sampo.scheduler.topological.base import RandomizedTopologicalScheduler
 from sampo.scheduler.utils import WorkerContractorPool
@@ -27,12 +35,28 @@ from sampo.utilities.resource_usage import resources_peaks_sum, resources_costs_
 
 
 class TimeFitness(FitnessFunction):
-    """
-    Fitness function that relies on finish time.
+    """Fitness based solely on completion time.
+
+    Функция приспособленности, основанная только на времени завершения.
     """
 
-    def evaluate(self, chromosome: ChromosomeType, evaluator: Callable[[ChromosomeType], Schedule]) \
-            -> tuple[int | float]:
+    def evaluate(
+        self, chromosome: ChromosomeType, evaluator: Callable[[ChromosomeType], Schedule]
+    ) -> tuple[int | float]:
+        """Evaluate chromosome by schedule finish time.
+
+        Оценивает хромосому по времени завершения расписания.
+
+        Args:
+            chromosome: Chromosome to evaluate.
+                Хромосома для оценки.
+            evaluator: Function converting chromosome to schedule.
+                Функция, преобразующая хромосому в расписание.
+
+        Returns:
+            tuple[int | float]: Single fitness value.
+            tuple[int | float]: Значение функции приспособленности.
+        """
         schedule = evaluator(chromosome)
         if schedule is None:
             return (Time.inf().value,)
@@ -40,14 +64,31 @@ class TimeFitness(FitnessFunction):
 
 
 class SumOfResourcesPeaksFitness(FitnessFunction):
-    """
-    Fitness function that relies on sum of resources peaks usage.
+    """Fitness based on peak resource usage.
+
+    Функция приспособленности на основе пикового использования ресурсов.
     """
 
-    def __init__(self, resources_names: Iterable[str] | None = None):
+    def __init__(self, resources_names: Iterable[str] | None = None) -> None:
         self._resources_names = list(resources_names) if resources_names is not None else None
 
-    def evaluate(self, chromosome: ChromosomeType, evaluator: Callable[[ChromosomeType], Schedule]) -> tuple[float]:
+    def evaluate(
+        self, chromosome: ChromosomeType, evaluator: Callable[[ChromosomeType], Schedule]
+    ) -> tuple[float]:
+        """Evaluate by summing resource peaks.
+
+        Оценивает, суммируя пики использования ресурсов.
+
+        Args:
+            chromosome: Chromosome to evaluate.
+                Хромосома для оценки.
+            evaluator: Function converting chromosome to schedule.
+                Функция, преобразующая хромосому в расписание.
+
+        Returns:
+            tuple[float]: Fitness value.
+            tuple[float]: Значение функции приспособленности.
+        """
         schedule = evaluator(chromosome)
         if schedule is None:
             return (Time.inf().value,)
@@ -171,11 +212,77 @@ def init_toolbox(wg: WorkGraph,
                  sgs_type: ScheduleGenerationScheme = ScheduleGenerationScheme.Parallel,
                  only_lft_initialization: bool = False,
                  is_multiobjective: bool = False) -> base.Toolbox:
-    """
-    Object, that include set of functions (tools) for genetic model and other functions related to it.
-    list of parameters that received this function is sufficient and complete to manipulate with genetic algorithm
+    """Create and configure DEAP toolbox for scheduling.
 
-    :return: Object, included tools for genetic algorithm
+    Создаёт и настраивает toolbox библиотеки DEAP для планирования.
+
+    Args:
+        wg: Work graph to schedule.
+            Граф работ для планирования.
+        contractors: Available contractors.
+            Доступные подрядчики.
+        worker_pool: Worker pool grouped by contractor.
+            Пул рабочих по подрядчикам.
+        landscape: Landscape configuration.
+            Конфигурация местности.
+        index2node: Mapping of indices to nodes.
+            Отображение индексов в узлы.
+        work_id2index: Mapping of work IDs to indices.
+            Отображение идентификаторов работ в индексы.
+        worker_name2index: Mapping of worker names to indices.
+            Отображение имён рабочих в индексы.
+        index2contractor_obj: Mapping of indices to contractors.
+            Отображение индексов в подрядчиков.
+        index2zone: Mapping of indices to zones.
+            Отображение индексов в зоны.
+        init_chromosomes: Predefined chromosomes with weights.
+            Предопределённые хромосомы с весами.
+        mut_order_pb: Probability of order mutation.
+            Вероятность мутации порядка.
+        mut_res_pb: Probability of resource mutation.
+            Вероятность мутации ресурсов.
+        mut_zone_pb: Probability of zone mutation.
+            Вероятность мутации зон.
+        statuses_available: Number of available statuses.
+            Количество доступных статусов.
+        selection_size: Population size after selection.
+            Размер популяции после отбора.
+        rand: Random number generator.
+            Генератор случайных чисел.
+        spec: Schedule specification.
+            Спецификация расписания.
+        worker_pool_indices: Indexed workers for quick access.
+            Индексированные рабочие для быстрого доступа.
+        contractor2index: Mapping of contractor IDs to indices.
+            Отображение идентификаторов подрядчиков в индексы.
+        contractor_borders: Resource borders per contractor.
+            Границы ресурсов на подрядчика.
+        node_indices: Indices of nodes.
+            Индексы узлов.
+        priorities: Priority list.
+            Список приоритетов.
+        parents: Parent relations.
+            Связи родителей.
+        children: Child relations.
+            Связи потомков.
+        resources_border: Resource limits.
+            Ограничения ресурсов.
+        assigned_parent_time: Start time of parent context.
+            Время начала родительского контекста.
+        fitness_weights: Weights of fitness values.
+            Веса значений приспособленности.
+        work_estimator: Estimator for work durations.
+            Оценщик длительности работ.
+        sgs_type: Schedule generation scheme.
+            Схема генерации расписания.
+        only_lft_initialization: Use only LFT initialization.
+            Использовать только LFT-инициализацию.
+        is_multiobjective: Whether algorithm is multiobjective.
+            Является ли алгоритм многокритериальным.
+
+    Returns:
+        base.Toolbox: Configured toolbox.
+        base.Toolbox: Настроенный toolbox.
     """
     toolbox = base.Toolbox()
     toolbox.register('register_individual_constructor', register_individual_constructor, toolbox=toolbox)
@@ -257,23 +364,59 @@ def copy_individual(ind: Individual, toolbox: Toolbox) -> Individual:
     )
 
 
-def generate_chromosomes(n: int,
-                         wg: WorkGraph,
-                         contractors: list[Contractor],
-                         spec: ScheduleSpec,
-                         work_id2index: dict[str, int],
-                         worker_name2index: dict[str, int],
-                         contractor2index: dict[str, int],
-                         contractor_borders: np.ndarray,
-                         init_chromosomes: dict[str, tuple[ChromosomeType, float, ScheduleSpec]],
-                         rand: random.Random,
-                         toolbox: Toolbox,
-                         work_estimator: WorkTimeEstimator = None,
-                         landscape: LandscapeConfiguration = LandscapeConfiguration(),
-                         only_lft_initialization: bool = False) -> list[ChromosomeType]:
-    """
-    Generates n chromosomes.
-    Do not use `generate_chromosome` function.
+def generate_chromosomes(
+    n: int,
+    wg: WorkGraph,
+    contractors: list[Contractor],
+    spec: ScheduleSpec,
+    work_id2index: dict[str, int],
+    worker_name2index: dict[str, int],
+    contractor2index: dict[str, int],
+    contractor_borders: np.ndarray,
+    init_chromosomes: dict[str, tuple[ChromosomeType, float, ScheduleSpec]],
+    rand: random.Random,
+    toolbox: Toolbox,
+    work_estimator: WorkTimeEstimator | None = None,
+    landscape: LandscapeConfiguration = LandscapeConfiguration(),
+    only_lft_initialization: bool = False,
+) -> list[ChromosomeType]:
+    """Generate multiple chromosomes.
+
+    Генерирует несколько хромосом.
+
+    Args:
+        n: Number of chromosomes to create.
+            Количество создаваемых хромосом.
+        wg: Work graph to schedule.
+            Граф работ для планирования.
+        contractors: Available contractors.
+            Доступные подрядчики.
+        spec: Schedule specification.
+            Спецификация расписания.
+        work_id2index: Mapping of work IDs to indices.
+            Отображение идентификаторов работ в индексы.
+        worker_name2index: Mapping of worker names to indices.
+            Отображение имён рабочих в индексы.
+        contractor2index: Mapping of contractor IDs to indices.
+            Отображение идентификаторов подрядчиков в индексы.
+        contractor_borders: Resource borders per contractor.
+            Границы ресурсов на подрядчика.
+        init_chromosomes: Predefined chromosomes with weights.
+            Предопределённые хромосомы с весами.
+        rand: Random number generator.
+            Генератор случайных чисел.
+        toolbox: Toolbox instance.
+            Экземпляр toolbox.
+        work_estimator: Estimator for work durations.
+            Оценщик длительности работ.
+        landscape: Landscape configuration.
+            Конфигурация местности.
+        only_lft_initialization: Use only LFT initialization.
+            Использовать только LFT-инициализацию.
+
+    Returns:
+        list[ChromosomeType]: Generated chromosomes.
+        list[ChromosomeType]: Сгенерированные хромосомы.
     """
 
     def randomized_init(is_topological: bool = False) -> ChromosomeType:
@@ -333,24 +476,22 @@ def generate_chromosomes(n: int,
     return chromosomes[:n]
 
 
-def generate_chromosome(wg: WorkGraph,
-                        contractors: list[Contractor],
-                        work_id2index: dict[str, int],
-                        worker_name2index: dict[str, int],
-                        contractor2index: dict[str, int],
-                        contractor_borders: np.ndarray,
-                        init_chromosomes: dict[str, tuple[ChromosomeType, float, ScheduleSpec]],
-                        spec: ScheduleSpec,
-                        rand: random.Random,
-                        work_estimator: WorkTimeEstimator = DefaultWorkEstimator(),
-                        landscape: LandscapeConfiguration = LandscapeConfiguration()) -> ChromosomeType:
-    """
-    It is necessary to generate valid scheduling, which are satisfied to current dependencies
-    That's why will be used the approved order of works (HEFT order and Topological sorting)
-    Topological sorts are generating always different
-    HEFT is always the same(now not)
-    HEFT we will choose in 30% of attempts
-    Topological in others
+def generate_chromosome(
+    wg: WorkGraph,
+    contractors: list[Contractor],
+    work_id2index: dict[str, int],
+    worker_name2index: dict[str, int],
+    contractor2index: dict[str, int],
+    contractor_borders: np.ndarray,
+    init_chromosomes: dict[str, tuple[ChromosomeType, float, ScheduleSpec]],
+    spec: ScheduleSpec,
+    rand: random.Random,
+    work_estimator: WorkTimeEstimator = DefaultWorkEstimator(),
+    landscape: LandscapeConfiguration = LandscapeConfiguration(),
+) -> ChromosomeType:
+    """Generate a single chromosome respecting dependencies.
+
+    Генерирует одну хромосому с учётом зависимостей.
     """
 
     def randomized_init() -> ChromosomeType:
@@ -381,9 +522,19 @@ def generate_chromosome(wg: WorkGraph,
 
 
 def select_new_population(population: list[Individual], k: int) -> list[Individual]:
-    """
-    Selection operator for genetic algorithm.
-    Select top k individuals in population.
+    """Select top ``k`` individuals.
+
+    Выбирает лучшие ``k`` особей.
+
+    Args:
+        population: List of candidate individuals.
+            Список кандидатов.
+        k: Number of individuals to retain.
+            Количество сохраняемых особей.
+
+    Returns:
+        list[Individual]: Selected individuals.
+        list[Individual]: Выбранные особи.
     """
     population = sorted(population, key=attrgetter('fitness'), reverse=True)
     return population[:k]
@@ -696,21 +847,35 @@ def mutate_resources(ind: Individual, mutpb: float, rand: random.Random,
     return ind
 
 
-def mate(ind1: Individual, ind2: Individual, optimize_resources: bool,
-         rand: random.Random, toolbox: Toolbox, priorities: np.ndarray) \
-        -> tuple[Individual, Individual]:
-    """
-    Combined crossover function of Two-Point crossover for order, One-Point crossover for resources
-    and One-Point crossover for zones.
+def mate(
+    ind1: Individual,
+    ind2: Individual,
+    optimize_resources: bool,
+    rand: random.Random,
+    toolbox: Toolbox,
+    priorities: np.ndarray,
+) -> tuple[Individual, Individual]:
+    """Perform crossover between two individuals.
 
-    :param ind1: first individual
-    :param ind2: second individual
-    :param optimize_resources: if True resource borders should be changed after mating
-    :param rand: the rand object used for randomized operations
-    :param priorities: priorities
-    :param toolbox: toolbox
+    Выполняет скрещивание двух особей.
 
-    :return: two mated individuals
+    Args:
+        ind1: First individual.
+            Первая особь.
+        ind2: Second individual.
+            Вторая особь.
+        optimize_resources: Change resource borders after crossover.
+            Изменять ли границы ресурсов после скрещивания.
+        rand: Random number generator.
+            Генератор случайных чисел.
+        toolbox: Toolbox instance.
+            Экземпляр toolbox.
+        priorities: Priorities array.
+            Массив приоритетов.
+
+    Returns:
+        tuple[Individual, Individual]: Two offspring individuals.
+        tuple[Individual, Individual]: Две потомственные особи.
     """
     child1, child2 = mate_scheduling_order(ind1, ind2, rand, toolbox, priorities, copy=True)
     child1, child2 = mate_resources(child1, child2, rand, optimize_resources, toolbox, copy=False)
@@ -720,24 +885,47 @@ def mate(ind1: Individual, ind2: Individual, optimize_resources: bool,
     return toolbox.Individual(child1), toolbox.Individual(child2)
 
 
-def mutate(ind: Individual, resources_border: np.ndarray, parents: dict[int, set[int]],
-           children: dict[int, set[int]], statuses_available: int, priorities: np.ndarray,
-           order_mutpb: float, res_mutpb: float, zone_mutpb: float,
-           rand: random.Random) -> Individual:
-    """
-    Combined mutation function of mutation for order, mutation for resources and mutation for zones.
+def mutate(
+    ind: Individual,
+    resources_border: np.ndarray,
+    parents: dict[int, set[int]],
+    children: dict[int, set[int]],
+    statuses_available: int,
+    priorities: np.ndarray,
+    order_mutpb: float,
+    res_mutpb: float,
+    zone_mutpb: float,
+    rand: random.Random,
+) -> Individual:
+    """Apply order, resource and zone mutations.
 
-    :param ind: the individual to be mutated
-    :param resources_border: low and up borders of resources amounts
-    :param parents: mapping object of works and their parent-works to create valid order
-    :param children: mapping object of works and their children-works to create valid order
-    :param statuses_available: number of statuses available
-    :param order_mutpb: probability of order's gene mutation
-    :param res_mutpb: probability of resources' gene mutation
-    :param zone_mutpb: probability of zones' gene mutation
-    :param rand: the rand object used for randomized operations
+    Применяет мутации порядка, ресурсов и зон.
 
-    :return: mutated individual
+    Args:
+        ind: Individual to mutate.
+            Особь для мутации.
+        resources_border: Resource limits.
+            Ограничения ресурсов.
+        parents: Mapping of works to their parents.
+            Отображение работ на их родителей.
+        children: Mapping of works to their children.
+            Отображение работ на их потомков.
+        statuses_available: Number of available statuses.
+            Количество доступных статусов.
+        priorities: Priorities array.
+            Массив приоритетов.
+        order_mutpb: Probability of order mutation.
+            Вероятность мутации порядка.
+        res_mutpb: Probability of resource mutation.
+            Вероятность мутации ресурсов.
+        zone_mutpb: Probability of zone mutation.
+            Вероятность мутации зон.
+        rand: Random number generator.
+            Генератор случайных чисел.
+
+    Returns:
+        Individual: Mutated individual.
+        Individual: Мутировавшая особь.
     """
     mutant = mutate_scheduling_order(ind, order_mutpb, rand, priorities, parents, children)
     mutant = mutate_resources(mutant, res_mutpb, rand, resources_border)

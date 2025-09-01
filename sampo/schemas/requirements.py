@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional
+"""Requirement models for resources and infrastructure.
+
+Модели требований к ресурсам и инфраструктуре.
+"""
+
 from uuid import uuid4
 
 from sampo.schemas.resources import Material
@@ -13,31 +18,42 @@ DEFAULT_MAX_COUNT = 100
 
 
 class BaseReq(AutoJSONSerializable['BaseReq'], ABC):
+    """Generic requirement description.
+
+    Общее описание требования.
     """
-    A class summarizing any requirements for the work to be performed related to renewable and non-renewable
-    resources, infrastructure requirements, etc.
-    """
+
     @property
     @abstractmethod
     def name(self) -> str:
-        """
-        Returns the name of the claim if it exists, e.g. 'dig work claim'.
+        """Name of requirement.
 
-        :return name: the name of req
+        Название требования.
+
+        Returns:
+            str: Requirement name.
+            str: Название требования.
         """
         ...
 
 
 @dataclass(frozen=True)
 class WorkerReq(BaseReq):
-    """
-    Requirements related to renewable human resources
+    """Requirements for human resources.
 
-    :param kind: type of resource/profession
-    :param volume: volume of work in time units
-    :param min_count: minimum number of employees needed to perform the work
-    :param max_count: maximum allowable number of employees performing the work
-    :param name: the name of this requirement
+    Требования к человеческим ресурсам.
+
+    Args:
+        kind: Type of worker.
+            Тип работника.
+        volume: Volume of work.
+            Объём работы.
+        min_count: Minimum number of workers.
+            Минимальное количество работников.
+        max_count: Maximum number of workers.
+            Максимальное количество работников.
+        name: Optional name for requirement.
+            Необязательное название требования.
     """
     kind: str
     volume: Time
@@ -46,25 +62,38 @@ class WorkerReq(BaseReq):
     name: Optional[str] = ''
 
     def scale_all(self, scalar: float, new_name: Optional[str] = '') -> 'WorkerReq':
-        """
-        The function scales the requirement to the size of the work including the total
-        volume and the maximum number of personnel involved.
+        """Scale volume and max count.
 
-        :param scalar: scalar for multiplication
-        :param new_name: name for new req
-        :return new_req: new object with new volume of the work and extended max_count_commands
+        Масштабирует объём и максимальное количество.
+
+        Args:
+            scalar: Multiplier.
+                Множитель.
+            new_name: Name for new requirement.
+                Имя нового требования.
+
+        Returns:
+            WorkerReq: Scaled requirement.
+            WorkerReq: Масштабированное требование.
         """
         max_count = max(round(self.max_count * scalar), self.min_count)
         new_req = WorkerReq(self.kind, self.volume * scalar, self.min_count, max_count, new_name or self.name)
         return new_req
 
     def scale_volume(self, scalar: float, new_name: Optional[str] = None) -> 'WorkerReq':
-        """
-        The function scales only volume of the work for the requirement.
+        """Scale only volume value.
 
-        :param scalar: scalar for multiplication
-        :param new_name: name for new req
-        :return new_req: new object with new volume of the work.
+        Масштабирует только объём.
+
+        Args:
+            scalar: Multiplier.
+                Множитель.
+            new_name: Name for new requirement.
+                Имя нового требования.
+
+        Returns:
+            WorkerReq: Scaled requirement.
+            WorkerReq: Масштабированное требование.
         """
         new_req = WorkerReq(self.kind, self.volume * scalar, self.min_count, self.max_count, new_name or self.name)
         return new_req
@@ -72,11 +101,15 @@ class WorkerReq(BaseReq):
 
 @dataclass(frozen=True)
 class EquipmentReq(BaseReq):
-    """
-    Requirements for renewable non-human resources: equipment, trucks, machines, etc
+    """Requirements for equipment resources.
 
-    :param kind: type of resource/profession
-    :param name: the name of this requirement
+    Требования к оборудованию.
+
+    Args:
+        kind: Equipment type.
+            Тип оборудования.
+        name: Name of requirement.
+            Название требования.
     """
     kind: str
     count: int
@@ -85,11 +118,15 @@ class EquipmentReq(BaseReq):
 
 @dataclass(frozen=True)
 class MaterialReq(BaseReq):
-    """
-    Requirements for non-renewable materials: consumables, spare parts, construction materials
+    """Requirements for consumable materials.
 
-    :param kind: type of resource/profession
-    :param name: the name of this requirement
+    Требования к расходным материалам.
+
+    Args:
+        kind: Material type.
+            Тип материала.
+        name: Name of requirement.
+            Название требования.
     """
     kind: str
     count: int
@@ -102,11 +139,15 @@ class MaterialReq(BaseReq):
 
 @dataclass(frozen=True)
 class ConstructionObjectReq(BaseReq):
-    """
-    Requirements for infrastructure and the construction of other facilities: electricity, pipelines, roads, etc
+    """Requirements for infrastructure objects.
 
-    :param kind: type of resource/profession
-    :param name: the name of this requirement
+    Требования к инфраструктурным объектам.
+
+    Args:
+        kind: Object type.
+            Тип объекта.
+        name: Name of requirement.
+            Название требования.
     """
     kind: str
     count: int
@@ -120,4 +161,8 @@ class ZoneReq(BaseReq):
     name: Optional[str] = None
 
     def to_zone(self) -> Zone:
+        """Convert to zone object.
+
+        Преобразует в объект зоны.
+        """
         return Zone(self.kind, self.required_status)

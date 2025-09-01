@@ -1,3 +1,8 @@
+"""Conversion helpers between schedules and genetic chromosomes.
+
+Вспомогательные функции преобразования между расписаниями и генетическими хромосомами.
+"""
+
 import copy
 
 import numpy as np
@@ -22,26 +27,41 @@ from sampo.schemas.time_estimator import WorkTimeEstimator, DefaultWorkEstimator
 from sampo.utilities.linked_list import LinkedList
 
 
-def convert_schedule_to_chromosome(work_id2index: dict[str, int],
-                                   worker_name2index: dict[str, int],
-                                   contractor2index: dict[str, int],
-                                   contractor_borders: np.ndarray,
-                                   schedule: Schedule,
-                                   spec: ScheduleSpec,
-                                   landscape: LandscapeConfiguration,
-                                   order: list[GraphNode] | None = None) -> ChromosomeType:
-    """
-    Receive a result of scheduling algorithm and transform it to chromosome
+def convert_schedule_to_chromosome(
+    work_id2index: dict[str, int],
+    worker_name2index: dict[str, int],
+    contractor2index: dict[str, int],
+    contractor_borders: np.ndarray,
+    schedule: Schedule,
+    spec: ScheduleSpec,
+    landscape: LandscapeConfiguration,
+    order: list[GraphNode] | None = None,
+) -> ChromosomeType:
+    """Transform schedule into genetic chromosome.
 
-    :param work_id2index:
-    :param worker_name2index:
-    :param contractor2index:
-    :param contractor_borders:
-    :param schedule:
-    :param spec:
-    :param landscape:
-    :param order: if passed, specify the node order that should appear in the chromosome
-    :return:
+    Преобразует расписание в генетическую хромосому.
+
+    Args:
+        work_id2index: Mapping of work IDs to indices.
+            Отображение идентификаторов работ в индексы.
+        worker_name2index: Mapping of worker names to indices.
+            Отображение имён рабочих в индексы.
+        contractor2index: Mapping of contractor IDs to indices.
+            Отображение идентификаторов подрядчиков в индексы.
+        contractor_borders: Resource borders per contractor.
+            Границы ресурсов на подрядчика.
+        schedule: Schedule to convert.
+            Расписание для преобразования.
+        spec: Schedule specification.
+            Спецификация расписания.
+        landscape: Landscape configuration.
+            Конфигурация местности.
+        order: Optional list of nodes defining chromosome order.
+            Необязательный список узлов, задающий порядок в хромосоме.
+
+    Returns:
+        ChromosomeType: Encoded chromosome.
+        ChromosomeType: Закодированная хромосома.
     """
 
     # order: list[GraphNode] = order if order is not None else [work for work in schedule.works
@@ -75,23 +95,58 @@ def convert_schedule_to_chromosome(work_id2index: dict[str, int],
     return order_chromosome, resource_chromosome, resource_border_chromosome, spec, zone_changes_chromosome
 
 
-def convert_chromosome_to_schedule(chromosome: ChromosomeType,
-                                   worker_pool: WorkerContractorPool,
-                                   index2node: dict[int, GraphNode],
-                                   index2contractor: dict[int, Contractor],
-                                   index2zone: dict[int, str],
-                                   worker_pool_indices: dict[int, dict[int, Worker]],
-                                   worker_name2index: dict[str, int],
-                                   contractor2index: dict[str, int],
-                                   landscape: LandscapeConfiguration,
-                                   timeline: Timeline | None = None,
-                                   assigned_parent_time: Time = Time(0),
-                                   work_estimator: WorkTimeEstimator = DefaultWorkEstimator(),
-                                   sgs_type: ScheduleGenerationScheme = ScheduleGenerationScheme.Parallel) \
-        -> tuple[dict[GraphNode, ScheduledWork], Time, Timeline, list[GraphNode]]:
-    """
-    Build schedule from received chromosome
-    It can be used in visualization of final solving of genetic algorithm
+def convert_chromosome_to_schedule(
+    chromosome: ChromosomeType,
+    worker_pool: WorkerContractorPool,
+    index2node: dict[int, GraphNode],
+    index2contractor: dict[int, Contractor],
+    index2zone: dict[int, str],
+    worker_pool_indices: dict[int, dict[int, Worker]],
+    worker_name2index: dict[str, int],
+    contractor2index: dict[str, int],
+    landscape: LandscapeConfiguration,
+    timeline: Timeline | None = None,
+    assigned_parent_time: Time = Time(0),
+    work_estimator: WorkTimeEstimator = DefaultWorkEstimator(),
+    sgs_type: ScheduleGenerationScheme = ScheduleGenerationScheme.Parallel,
+) -> tuple[dict[GraphNode, ScheduledWork], Time, Timeline, list[GraphNode]]:
+    """Build schedule from genetic chromosome.
+
+    Строит расписание по генетической хромосоме.
+
+    Args:
+        chromosome: Encoded chromosome.
+            Закодированная хромосома.
+        worker_pool: Available workers grouped by contractor.
+            Доступные рабочие по подрядчикам.
+        index2node: Mapping from indices to graph nodes.
+            Отображение индексов в узлы графа.
+        index2contractor: Mapping from indices to contractors.
+            Отображение индексов в подрядчиков.
+        index2zone: Mapping from indices to zone names.
+            Отображение индексов в названия зон.
+        worker_pool_indices: Worker objects indexed by name and contractor.
+            Объекты рабочих, индексированные по имени и подрядчику.
+        worker_name2index: Mapping of worker names to indices.
+            Отображение имён рабочих в индексы.
+        contractor2index: Mapping of contractor IDs to indices.
+            Отображение идентификаторов подрядчиков в индексы.
+        landscape: Landscape configuration.
+            Конфигурация местности.
+        timeline: Timeline instance to use.
+            Используемая временная шкала.
+        assigned_parent_time: Start time of parent context.
+            Время начала родительского контекста.
+        work_estimator: Estimator for work durations.
+            Оценщик длительности работ.
+        sgs_type: Schedule generation scheme.
+            Схема генерации расписания.
+
+    Returns:
+        tuple[dict[GraphNode, ScheduledWork], Time, Timeline, list[GraphNode]]:
+        Generated schedule and auxiliary data.
+        tuple[dict[GraphNode, ScheduledWork], Time, Timeline, list[GraphNode]]:
+        Сгенерированное расписание и вспомогательные данные.
     """
     match sgs_type:
         case ScheduleGenerationScheme.Parallel:
@@ -114,21 +169,23 @@ def convert_chromosome_to_schedule(chromosome: ChromosomeType,
                      work_estimator)
 
 
-def parallel_schedule_generation_scheme(chromosome: ChromosomeType,
-                                        worker_pool: WorkerContractorPool,
-                                        index2node: dict[int, GraphNode],
-                                        index2contractor: dict[int, Contractor],
-                                        index2zone: dict[int, str],
-                                        worker_pool_indices: dict[int, dict[int, Worker]],
-                                        worker_name2index: dict[str, int],
-                                        contractor2index: dict[str, int],
-                                        landscape: LandscapeConfiguration = LandscapeConfiguration(),
-                                        timeline: Timeline | None = None,
-                                        assigned_parent_time: Time = Time(0),
-                                        work_estimator: WorkTimeEstimator = DefaultWorkEstimator()) \
-        -> tuple[dict[GraphNode, ScheduledWork], Time, Timeline, list[GraphNode]]:
-    """
-    Implementation of Parallel Schedule Generation Scheme
+def parallel_schedule_generation_scheme(
+    chromosome: ChromosomeType,
+    worker_pool: WorkerContractorPool,
+    index2node: dict[int, GraphNode],
+    index2contractor: dict[int, Contractor],
+    index2zone: dict[int, str],
+    worker_pool_indices: dict[int, dict[int, Worker]],
+    worker_name2index: dict[str, int],
+    contractor2index: dict[str, int],
+    landscape: LandscapeConfiguration = LandscapeConfiguration(),
+    timeline: Timeline | None = None,
+    assigned_parent_time: Time = Time(0),
+    work_estimator: WorkTimeEstimator = DefaultWorkEstimator(),
+) -> tuple[dict[GraphNode, ScheduledWork], Time, Timeline, list[GraphNode]]:
+    """Implementation of parallel schedule generation scheme.
+
+    Реализация параллельной схемы генерации расписаний.
     """
     node2swork: dict[GraphNode, ScheduledWork] = {}
 
@@ -227,21 +284,23 @@ def parallel_schedule_generation_scheme(chromosome: ChromosomeType,
     return node2swork, assigned_parent_time, timeline, order_nodes
 
 
-def serial_schedule_generation_scheme(chromosome: ChromosomeType,
-                                      worker_pool: WorkerContractorPool,
-                                      index2node: dict[int, GraphNode],
-                                      index2contractor: dict[int, Contractor],
-                                      index2zone: dict[int, str],
-                                      worker_pool_indices: dict[int, dict[int, Worker]],
-                                      worker_name2index: dict[str, int],
-                                      contractor2index: dict[str, int],
-                                      landscape: LandscapeConfiguration = LandscapeConfiguration(),
-                                      timeline: Timeline | None = None,
-                                      assigned_parent_time: Time = Time(0),
-                                      work_estimator: WorkTimeEstimator = DefaultWorkEstimator()) \
-        -> tuple[dict[GraphNode, ScheduledWork], Time, Timeline, list[GraphNode]]:
-    """
-    Implementation of Serial Schedule Generation Scheme
+def serial_schedule_generation_scheme(
+    chromosome: ChromosomeType,
+    worker_pool: WorkerContractorPool,
+    index2node: dict[int, GraphNode],
+    index2contractor: dict[int, Contractor],
+    index2zone: dict[int, str],
+    worker_pool_indices: dict[int, dict[int, Worker]],
+    worker_name2index: dict[str, int],
+    contractor2index: dict[str, int],
+    landscape: LandscapeConfiguration = LandscapeConfiguration(),
+    timeline: Timeline | None = None,
+    assigned_parent_time: Time = Time(0),
+    work_estimator: WorkTimeEstimator = DefaultWorkEstimator(),
+) -> tuple[dict[GraphNode, ScheduledWork], Time, Timeline, list[GraphNode]]:
+    """Implementation of serial schedule generation scheme.
+
+    Реализация последовательной схемы генерации расписаний.
     """
     node2swork: dict[GraphNode, ScheduledWork] = {}
 

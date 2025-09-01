@@ -1,5 +1,9 @@
 import pytest
 from _pytest.fixtures import fixture
+"""Tests for material supply timeline.
+
+Тесты таймлайна поставок материалов.
+"""
 
 from sampo.scheduler.heft.prioritization import prioritization
 from sampo.scheduler.timeline.hybrid_supply_timeline import HybridSupplyTimeline

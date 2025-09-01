@@ -1,5 +1,9 @@
 from copy import deepcopy
 from typing import Tuple
+"""Tests for ExtendedSortedList operations.
+
+Тесты операций ExtendedSortedList.
+"""
 
 from sampo.schemas.sorted_list import ExtendedSortedList
 

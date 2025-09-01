@@ -1,4 +1,8 @@
 from uuid import uuid4
+"""Tests for inserting work units into a graph.
+
+Тесты вставки рабочих единиц в граф.
+"""
 
 from _pytest.fixtures import fixture
 

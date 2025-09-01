@@ -1,3 +1,8 @@
+"""Cyclic hybrid scheduler combining multiple strategies.
+
+Циклический гибридный планировщик, объединяющий несколько стратегий.
+"""
+
 import numpy as np
 
 from sampo.api.genetic_api import FitnessFunction, ChromosomeType, ScheduleGenerationScheme
@@ -10,11 +15,32 @@ from sampo.schemas.schedule_spec import ScheduleSpec
 
 
 class CycleHybridScheduler:
-    def __init__(self,
-                 starting_scheduler: PopulationScheduler,
-                 cycle_schedulers: list[PopulationScheduler],
-                 fitness: FitnessFunction = TimeFitness(),
-                 max_plateau_size: int = 2):
+    """Scheduler that iteratively applies a set of algorithms.
+
+    Планировщик, который итеративно применяет набор алгоритмов.
+    """
+
+    def __init__(
+        self,
+        starting_scheduler: PopulationScheduler,
+        cycle_schedulers: list[PopulationScheduler],
+        fitness: FitnessFunction = TimeFitness(),
+        max_plateau_size: int = 2,
+    ) -> None:
+        """Initialize hybrid scheduler.
+
+        Инициализирует гибридный планировщик.
+
+        Args:
+            starting_scheduler: Scheduler to generate initial population.
+                Планировщик для генерации начальной популяции.
+            cycle_schedulers: Schedulers applied sequentially each cycle.
+                Планировщики, применяемые последовательно в каждом цикле.
+            fitness: Fitness function used for evaluation.
+                Функция приспособленности для оценки.
+            max_plateau_size: Number of cycles without improvement before stop.
+                Количество циклов без улучшения перед остановкой.
+        """
         self._starting_scheduler = starting_scheduler
         self._cycle_schedulers = cycle_schedulers
         self._fitness = fitness
@@ -28,12 +54,34 @@ class CycleHybridScheduler:
         fitness = SAMPO.backend.compute_chromosomes(self._fitness, pop)
         return pop[np.argmin(fitness)]
 
-    def run(self,
-            wg: WorkGraph,
-            contractors: list[Contractor],
-            spec: ScheduleSpec = ScheduleSpec(),
-            assigned_parent_time: Time = Time(0),
-            landscape: LandscapeConfiguration = LandscapeConfiguration()) -> ChromosomeType:
+    def run(
+        self,
+        wg: WorkGraph,
+        contractors: list[Contractor],
+        spec: ScheduleSpec = ScheduleSpec(),
+        assigned_parent_time: Time = Time(0),
+        landscape: LandscapeConfiguration = LandscapeConfiguration(),
+    ) -> ChromosomeType:
+        """Execute cyclic scheduling returning best chromosome.
+
+        Выполняет циклическое планирование, возвращая лучшую хромосому.
+
+        Args:
+            wg: Work graph to schedule.
+                Граф работ для планирования.
+            contractors: Available contractors.
+                Доступные подрядчики.
+            spec: Schedule specification.
+                Спецификация расписания.
+            assigned_parent_time: Start time of parent context.
+                Время начала родительского контекста.
+            landscape: Landscape configuration.
+                Конфигурация местности.
+
+        Returns:
+            ChromosomeType: Best found chromosome.
+            ChromosomeType: Лучшая найденная хромосома.
+        """
         pop = self._starting_scheduler.schedule([], wg, contractors, spec, assigned_parent_time, landscape)
 
         cur_fitness = Time.inf().value
@@ -54,13 +102,37 @@ class CycleHybridScheduler:
 
         return self._get_best_individual(pop)
 
-    def schedule(self,
-                 wg: WorkGraph,
-                 contractors: list[Contractor],
-                 spec: ScheduleSpec = ScheduleSpec(),
-                 assigned_parent_time: Time = Time(0),
-                 sgs_type: ScheduleGenerationScheme = ScheduleGenerationScheme.Parallel,
-                 landscape: LandscapeConfiguration = LandscapeConfiguration()) -> Schedule:
+    def schedule(
+        self,
+        wg: WorkGraph,
+        contractors: list[Contractor],
+        spec: ScheduleSpec = ScheduleSpec(),
+        assigned_parent_time: Time = Time(0),
+        sgs_type: ScheduleGenerationScheme = ScheduleGenerationScheme.Parallel,
+        landscape: LandscapeConfiguration = LandscapeConfiguration(),
+    ) -> Schedule:
+        """Produce final schedule from best chromosome.
+
+        Формирует итоговое расписание из лучшей хромосомы.
+
+        Args:
+            wg: Work graph to schedule.
+                Граф работ для планирования.
+            contractors: Available contractors.
+                Доступные подрядчики.
+            spec: Schedule specification.
+                Спецификация расписания.
+            assigned_parent_time: Start time of parent context.
+                Время начала родительского контекста.
+            sgs_type: Schedule generation scheme.
+                Схема генерации расписания.
+            landscape: Landscape configuration.
+                Конфигурация местности.
+
+        Returns:
+            Schedule: Generated schedule.
+            Schedule: Сформированное расписание.
+        """
         best_ind = self.run(wg, contractors, spec, assigned_parent_time, landscape)
 
         toolbox = create_toolbox(wg=wg, contractors=contractors, landscape=landscape,

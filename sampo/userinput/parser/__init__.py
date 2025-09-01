@@ -1,3 +1,8 @@
+"""User input parser exports.
+
+Экспорт парсеров пользовательского ввода.
+"""
+
 from sampo.userinput.parser.contractor_type import ContractorType
 from sampo.userinput.parser.csv_parser import CSVParser
 from sampo.userinput.parser.exception import InputDataException, WorkGraphBuildingException

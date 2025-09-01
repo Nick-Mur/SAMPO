@@ -1,7 +1,18 @@
+"""Definitions of work units.
+
+Определения рабочих единиц.
+"""
+
 from dataclasses import dataclass
 
 from sampo.schemas.identifiable import Identifiable
-from sampo.schemas.requirements import WorkerReq, EquipmentReq, MaterialReq, ConstructionObjectReq, ZoneReq
+from sampo.schemas.requirements import (
+    WorkerReq,
+    EquipmentReq,
+    MaterialReq,
+    ConstructionObjectReq,
+    ZoneReq,
+)
 from sampo.schemas.resources import Material
 from sampo.schemas.serializable import AutoJSONSerializable
 from sampo.utilities.serializers import custom_serializer
@@ -9,37 +20,64 @@ from sampo.utilities.serializers import custom_serializer
 
 @dataclass
 class WorkUnit(AutoJSONSerializable['WorkUnit'], Identifiable):
+    """Graph vertex representing a single task.
+
+    Вершина графа, представляющая отдельную задачу.
     """
-    Class that describe vertex in graph (one work/task)
-    """
-    def __init__(self,
-                 id: str,
-                 name: str,
-                 worker_reqs: list[WorkerReq] = None,
-                 equipment_reqs: list[EquipmentReq] = None,
-                 material_reqs: list[MaterialReq] = None,
-                 object_reqs: list[ConstructionObjectReq] = None,
-                 zone_reqs: list[ZoneReq] = None,
-                 description: str = '',
-                 group: str = 'main project',
-                 priority: int = 1,
-                 is_service_unit: bool = False,
-                 volume: float = 0,
-                 volume_type: str = 'unit',
-                 display_name: str = "",
-                 workground_size: int = 100):
-        """
-        :param worker_reqs: list of required professions (i.e. workers)
-        :param equipment_reqs: list of required equipment
-        :param material_reqs: list of required materials (e.g. logs, stones, gravel etc.)
-        :param object_reqs: list of required objects (e.g. electricity, pipelines, roads)
-        :param zone_reqs: list of required zone statuses (e.g. opened/closed doors, attached equipment, etc.)
-        :param description: the description. It is useful, for example, to show it on visualization
-        :param group: union block of works
-        :param is_service_unit: service units are additional vertexes
-        :param volume: scope of work
-        :param volume_type: unit of scope of work
-        :param display_name: name of work
+
+    def __init__(
+        self,
+        id: str,
+        name: str,
+        worker_reqs: list[WorkerReq] | None = None,
+        equipment_reqs: list[EquipmentReq] | None = None,
+        material_reqs: list[MaterialReq] | None = None,
+        object_reqs: list[ConstructionObjectReq] | None = None,
+        zone_reqs: list[ZoneReq] | None = None,
+        description: str = '',
+        group: str = 'main project',
+        priority: int = 1,
+        is_service_unit: bool = False,
+        volume: float = 0,
+        volume_type: str = 'unit',
+        display_name: str = '',
+        workground_size: int = 100,
+    ) -> None:
+        """Initialize work unit.
+
+        Инициализирует рабочую единицу.
+
+        Args:
+            id: Work identifier.
+                Идентификатор работы.
+            name: Work name.
+                Название работы.
+            worker_reqs: Required worker types.
+                Требуемые типы рабочих.
+            equipment_reqs: Required equipment.
+                Необходимое оборудование.
+            material_reqs: Required materials.
+                Необходимые материалы.
+            object_reqs: Required construction objects.
+                Необходимые строительные объекты.
+            zone_reqs: Required zone statuses.
+                Требуемые состояния зон.
+            description: Textual description.
+                Текстовое описание.
+            group: Work group.
+                Группа работ.
+            priority: Priority value.
+                Значение приоритета.
+            is_service_unit: Whether unit is service.
+                Является ли единица сервисной.
+            volume: Work volume.
+                Объём работ.
+            volume_type: Unit of work volume.
+                Единица объёма работ.
+            display_name: Display name.
+                Отображаемое имя.
+            workground_size: Size of workground.
+                Размер рабочей площадки.
         """
         super(WorkUnit, self).__init__(id, name)
         if material_reqs is None:
@@ -70,51 +108,78 @@ class WorkUnit(AutoJSONSerializable['WorkUnit'], Identifiable):
             del attr
 
     def need_materials(self) -> list[Material]:
+        """Return list of required materials.
+
+        Возвращает список требуемых материалов.
+        """
         return [req.material() for req in self.material_reqs]
 
     @custom_serializer('worker_reqs')
     @custom_serializer('zone_reqs')
     @custom_serializer('material_reqs')
     def serialize_serializable_list(self, value) -> list:
-        """
-        Return serialized list of values.
-        Values should be serializable.
+        """Serialize list of serializable values.
 
-        :param value: list of values
-        :return: list of serialized values
+        Сериализует список сериализуемых значений.
+
+        Args:
+            value: Values to serialize.
+                Значения для сериализации.
+
+        Returns:
+            list: Serialized values.
+            list: Сериализованные значения.
         """
         return [t._serialize() for t in value]
 
     @classmethod
     @custom_serializer('material_reqs', deserializer=True)
     def material_reqs_deserializer(cls, value) -> list[MaterialReq]:
-        """
-        Get list of material requirements
+        """Deserialize material requirements.
 
-        :param value: serialized list of material requirements
-        :return: list of material requirements
+        Десериализует требования к материалам.
+
+        Args:
+            value: Serialized list of material requirements.
+                Сериализованный список требований к материалам.
+
+        Returns:
+            list[MaterialReq]: Material requirements list.
+            list[MaterialReq]: Список требований к материалам.
         """
         return [MaterialReq._deserialize(wr) for wr in value]
 
     @classmethod
     @custom_serializer('worker_reqs', deserializer=True)
     def worker_reqs_deserializer(cls, value) -> list[WorkerReq]:
-        """
-        Get list of worker requirements
+        """Deserialize worker requirements.
 
-        :param value: serialized list of work requirements
-        :return: list of worker requirements
+        Десериализует требования к рабочим.
+
+        Args:
+            value: Serialized list of worker requirements.
+                Сериализованный список требований к рабочим.
+
+        Returns:
+            list[WorkerReq]: Worker requirements list.
+            list[WorkerReq]: Список требований к рабочим.
         """
         return [WorkerReq._deserialize(wr) for wr in value]
 
     @classmethod
     @custom_serializer('zone_reqs', deserializer=True)
     def zone_reqs_deserializer(cls, value) -> list[ZoneReq]:
-        """
-        Get list of worker requirements
+        """Deserialize zone requirements.
 
-        :param value: serialized list of work requirements
-        :return: list of worker requirements
+        Десериализует требования к зонам.
+
+        Args:
+            value: Serialized list of zone requirements.
+                Сериализованный список требований к зонам.
+
+        Returns:
+            list[ZoneReq]: Zone requirements list.
+            list[ZoneReq]: Список требований к зонам.
         """
         return [ZoneReq._deserialize(wr) for wr in value]
 

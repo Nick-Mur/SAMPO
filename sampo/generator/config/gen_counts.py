@@ -1,3 +1,8 @@
+"""Default generation counts for synthetic scenarios.
+
+Стандартные количества для генерации синтетических сценариев.
+"""
+
 from sampo.schemas.interval import IntervalUniform
 
 ONE_SECTION_PIPE = IntervalUniform(0.5, 3)

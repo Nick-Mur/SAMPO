@@ -1,30 +1,47 @@
+"""Extended sorted list with merge support.
+
+Расширенный отсортированный список с поддержкой слияния.
+"""
+
 from abc import ABC
 from bisect import bisect_left, bisect_right
 
 from sortedcontainers import SortedKeyList
 
 
-# TODO: describe the class (description)
 class ExtendedSortedList(SortedKeyList, ABC):
-    def __setitem__(self, idx, value):
-        """
-        This should just set the item by internal index WITHOUT modifying the key
+    """Sorted list allowing in-place key-preserving merges.
 
-        :param idx: the index
-        :param value: value. Should have tha same key even the old value reverenced by `idx`
+    Отсортированный список, позволяющий слияния без изменения ключей.
+    """
+
+    def __setitem__(self, idx, value):
+        """Set item by index without modifying its key.
+
+        Устанавливает элемент по индексу без изменения его ключа.
+
+        Args:
+            idx: Index to replace.
+                Индекс заменяемого элемента.
+            value: New value with same key.
+                Новое значение с тем же ключом.
         """
         self.merge(self[idx], value, lambda x, y: y)
 
     def merge(self, old, value, merger):
-        """
-        Merges `value` and `old` and places the result to the place of `old` in sorted list.
-        This should NOT modify key of object.
+        """Merge ``value`` into ``old`` preserving key.
 
-        Runtime complexity: `O(log(n))` -- approximate.
+        Сливает ``value`` в ``old`` без изменения ключа.
 
-        :param merger: a function that takes old and new value and merges it into new one
-        :param value: value to merge
+        Runtime complexity: approximately ``O(log n)``.
 
+        Args:
+            old: Existing element in list.
+                Существующий элемент списка.
+            value: New value to merge.
+                Новое значение для слияния.
+            merger: Function combining two values.
+                Функция объединения двух значений.
         """
         _lists = self._lists
         _keys = self._keys

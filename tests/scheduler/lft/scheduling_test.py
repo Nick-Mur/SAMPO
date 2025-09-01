@@ -1,3 +1,8 @@
+"""LFT scheduler integration tests.
+
+Интеграционные тесты планировщика LFT.
+"""
+
 from sampo.utilities.validation import validate_schedule
 from tests.scheduler.lft.fixtures import setup_schedulers_and_parameters
 

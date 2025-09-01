@@ -1,5 +1,9 @@
 import os
 import sys
+"""Basic pipeline scheduling tests.
+
+Базовые тесты конвейера планирования.
+"""
 
 from sampo.pipeline import SchedulingPipeline
 from sampo.pipeline.lag_optimization import LagOptimizationStrategy

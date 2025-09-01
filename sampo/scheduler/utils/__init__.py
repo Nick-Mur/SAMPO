@@ -1,3 +1,8 @@
+"""Utility helpers for schedulers.
+
+Вспомогательные функции для планировщиков.
+"""
+
 from collections import defaultdict
 from typing import Iterable
 
@@ -10,12 +15,17 @@ WorkerContractorPool = dict[WorkerName, dict[ContractorName, Worker]]
 
 
 def get_worker_contractor_pool(contractors: Iterable[Contractor]) -> WorkerContractorPool:
-    """
-    Gets worker-contractor dictionary from contractors list.
-    Alias for frequently used functionality.
+    """Build worker-contractor mapping.
 
-    :param contractors: list of all the considered contractors
-    :return: dictionary of workers by worker name, next by contractor id
+    Формирует отображение рабочих по подрядчикам.
+
+    Args:
+        contractors: Iterable of contractors.
+            Итерация подрядчиков.
+
+    Returns:
+        WorkerContractorPool: Mapping of worker names to contractors.
+        WorkerContractorPool: Отображение имён рабочих на подрядчиков.
     """
     worker_pool = defaultdict(dict)
     for contractor in contractors:
@@ -24,32 +34,22 @@ def get_worker_contractor_pool(contractors: Iterable[Contractor]) -> WorkerContr
     return worker_pool
 
 
-def get_head_nodes_with_connections_mappings(wg: WorkGraph
-                                             ) -> tuple[list[GraphNode], dict[str, set[str]], dict[str, set[str]]]:
-    """
-    Identifies 'head nodes' in a WorkGraph and reconstructs their inter-node dependencies.
+def get_head_nodes_with_connections_mappings(
+    wg: WorkGraph,
+) -> tuple[list[GraphNode], dict[str, set[str]], dict[str, set[str]]]:
+    """Identify head nodes and reconstruct dependencies.
 
-    Head nodes are defined as the first nodes of inseparable chains or standalone nodes
-    that are not part of an inseparable chain (i.e., they are not 'inseparable sons').
-    This function effectively flattens the graph by treating inseparable chains as
-    single logical entities represented by their head node, and then re-establishes
-    parent-child relationships between these head nodes.
+    Определяет головные узлы и восстанавливает зависимости.
 
     Args:
-        wg: The `WorkGraph` to analyze.
+        wg: Work graph to analyze.
+            Граф работ для анализа.
 
     Returns:
-        A tuple containing:
-            - A list of `GraphNode` objects representing the head nodes,
-              sorted in topological order based on their reconstructed dependencies.
-            - A dictionary mapping the ID of each head node to a set of IDs of
-              its new 'parent' head nodes. These represent external dependencies
-              where a parent of any node within the current head node's inseparable
-              chain belongs to another head node's chain.
-            - A dictionary mapping the ID of each head node to a set of IDs of
-              its new 'child' head nodes. Similar to parents, these represent
-              external dependencies where a child of any node within the current
-              head node's inseparable chain belongs to another head node's chain.
+        tuple[list[GraphNode], dict[str, set[str]], dict[str, set[str]]]:
+        Head nodes and parent/child mappings.
+        tuple[list[GraphNode], dict[str, set[str]], dict[str, set[str]]]:
+        Головные узлы и связи родитель/потомок.
     """
     # Filter the work graph nodes to identify all 'head nodes'.
     # A head node is one that is not an 'inseparable son', meaning it's either

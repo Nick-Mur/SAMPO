@@ -1,3 +1,8 @@
+"""Interfaces for genetic scheduling API.
+
+Интерфейсы для генетического API планирования.
+"""
+
 from abc import ABC, abstractmethod
 from enum import Enum
 from functools import partial
@@ -12,21 +17,28 @@ from sampo.schemas.schedule_spec import ScheduleSpec
 ChromosomeType = tuple[np.ndarray, np.ndarray, np.ndarray, ScheduleSpec, np.ndarray]
 
 class ScheduleGenerationScheme(Enum):
+    """Available schedule generation schemes.
+
+    Доступные схемы генерации расписаний.
+    """
+
     Parallel = 'Parallel'
     Serial = 'Serial'
 
 
 class FitnessFunction(ABC):
-    """
-    Base class for description of different fitness functions.
+    """Base class for fitness functions.
+
+    Базовый класс для функций приспособленности.
     """
 
     @abstractmethod
-    def evaluate(self, chromosome: ChromosomeType, evaluator: Callable[[ChromosomeType], Schedule]) \
-            -> tuple[int | float]:
-        """
-        Calculate the value of fitness function of the chromosome.
-        It is better when value is less.
+    def evaluate(
+        self, chromosome: ChromosomeType, evaluator: Callable[[ChromosomeType], Schedule]
+    ) -> tuple[int | float]:
+        """Calculate fitness of a chromosome; lower is better.
+
+        Вычисляет приспособленность хромосомы; меньше — лучше.
         """
         ...
 
@@ -38,14 +50,20 @@ class FitnessFunction(ABC):
 # Individual = creator.Individual
 
 class Individual(list):
-    def __init__(self, individual_fitness_constructor: Callable[[], base.Fitness], chromosome: ChromosomeType):
+    """Wrapper for chromosome with attached fitness.
+
+    Обёртка над хромосомой с прикреплённой приспособленностью.
+    """
+
+    def __init__(self, individual_fitness_constructor: Callable[[], base.Fitness], chromosome: ChromosomeType) -> None:
         super().__init__(chromosome)
         self.fitness = individual_fitness_constructor()
 
     @staticmethod
     def prepare(individual_fitness_constructor: Callable[[], base.Fitness]) -> Callable[[ChromosomeType], list]:
-        """
-        Returns the constructor of Individual prepared to use in Genetic algorithm
+        """Return constructor adapted for DEAP.
+
+        Возвращает конструктор, адаптированный для DEAP.
         """
         return partial(Individual, individual_fitness_constructor)
 
