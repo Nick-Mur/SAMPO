@@ -1,16 +1,33 @@
+"""Operations for removing nodes from work graphs.
+
+Операции по удалению узлов из графов работ.
+"""
+
 from sampo.schemas.graph import WorkGraph, GraphNode
 from sampo.structurator.prepare_wg_copy import prepare_work_graph_copy, new_start_finish
 
 
-def delete_graph_node(original_wg: WorkGraph, remove_gn_id: str, change_id: bool = True) -> WorkGraph:
-    """
-    Deletes a task from WorkGraph.
-    If the task consists of several inseparable nodes this function deletes all of those nodes
-    :param original_wg: WorkGraph from which a task is deleted
-    :param remove_gn_id: id of the node, corresponding to the deleted task.
-    If the task consists of several inseparable nodes, this is id of one of them
-    :param change_id: do ids in the new graph need to be changed
-    :return: new WorkGraph with deleted task
+def delete_graph_node(
+    original_wg: WorkGraph, remove_gn_id: str, change_id: bool = True
+) -> WorkGraph:
+    """Delete a task from a work graph.
+
+    Удалить задачу из графа работ.
+
+    If the task consists of inseparable nodes, all of them are removed.
+    Если задача содержит неразделимые узлы, удаляются все они.
+
+    Args:
+        original_wg: WorkGraph from which the task is removed.
+            WorkGraph, из которого удаляется задача.
+        remove_gn_id: Identifier of any node from the task to delete.
+            Идентификатор любого узла удаляемой задачи.
+        change_id: Whether to generate new identifiers in the copy.
+            Требуется ли генерировать новые идентификаторы в копии.
+
+    Returns:
+        Work graph without the specified task.
+        Граф работ без указанной задачи.
     """
     copied_nodes, old_to_new_ids = prepare_work_graph_copy(original_wg, change_id=change_id)
 

@@ -1,3 +1,8 @@
+"""Utilities for restructuring work graphs by splitting into stages.
+
+Утилиты для реструктуризации графов работ путем разделения на этапы.
+"""
+
 from copy import deepcopy
 from typing import Optional
 from operator import itemgetter
@@ -11,31 +16,49 @@ from sampo.utilities.priority import check_and_correct_priorities
 
 
 def make_new_node_id(work_unit_id: str, ind: int) -> str:
-    """
-    Creates an auxiliary id for restructuring the graph
+    """Create an auxiliary identifier for a stage.
 
-    :param work_unit_id: str - id of work unit
-    :param ind: int - sequence number of work_unit stage
-    :return:
-       auxiliary_id: str - an auxiliary id for the work unit
+    Создать вспомогательный идентификатор для этапа.
+
+    Args:
+        work_unit_id: Identifier of the work unit.
+            Идентификатор производственной операции.
+        ind: Sequence number of the stage.
+            Порядковый номер этапа.
+
+    Returns:
+        Auxiliary identifier for the stage.
+        Вспомогательный идентификатор для этапа.
     """
+
     return f'{work_unit_id}{STAGE_SEP}{ind}'
 
 
-def fill_parents_to_new_nodes(origin_node: GraphNode, id2new_nodes: dict[str, GraphNode],
-                              restructuring_edges2new_nodes_id: dict[tuple[str, str], str],
-                              use_lag_edge_optimization: bool):
-    """
-    Restores parent edges for transformed node
+def fill_parents_to_new_nodes(
+    origin_node: GraphNode,
+    id2new_nodes: dict[str, GraphNode],
+    restructuring_edges2new_nodes_id: dict[tuple[str, str], str],
+    use_lag_edge_optimization: bool,
+):
+    """Restore parent edges for a transformed node.
 
-    :param origin_node: GraphNode - The original unconverted node
-    :param id2new_nodes: GraphNodeDict - Dictionary with restructured new nodes id
-        where the restructured nodes are written
-    :param restructuring_edges2new_nodes_id: dict[tuple[str, str], str] - Dictionary for matching edges in the original
-        work graph and IDs of new nodes that logically match those edges
-    :param use_lag_edge_optimization: bool - if true - considers lags amount in edges,
-        otherwise considers lags equal to zero and LagFinishStart edges as FinishStart edges
-    :return: Nothing
+    Восстановить ребра к родительским узлам для преобразованного узла.
+
+    Args:
+        origin_node: The original unconverted node.
+            Исходный непереработанный узел.
+        id2new_nodes: Mapping of new node identifiers to nodes.
+            Отображение новых идентификаторов на узлы.
+        restructuring_edges2new_nodes_id: Mapping between edges of the
+            original graph and identifiers of new nodes.
+            Отображение между ребрами исходного графа и идентификаторами
+            новых узлов.
+        use_lag_edge_optimization: Whether to account for lags in edges.
+            Учитывать ли задержки в ребрах.
+
+    Returns:
+        None
+        None
     """
     # last stage id is equal to original node id
     last_stage_id = origin_node.id
@@ -110,25 +133,33 @@ def fill_parents_to_new_nodes(origin_node: GraphNode, id2new_nodes: dict[str, Gr
     id2new_nodes[last_stage_id].add_parents(parents_last_stage)
 
 
-def split_node_into_stages(origin_node: GraphNode, restructuring_edges: list[tuple[GraphEdge, bool]],
-                           id2new_nodes: dict[str, GraphNode],
-                           restructuring_edges2new_nodes_id: dict[tuple[str, str], str],
-                           use_lag_edge_optimization: bool):
-    """
-    Splits the node into stages according to the lags in the restructuring edges.
-    For all stages except the last one, the id changes. For the last one, the id remains the same,
-    so that it is more convenient to restore the edges.
-    The resulting nodes are chained together by Inseparable-Finish-Start edges.
+def split_node_into_stages(
+    origin_node: GraphNode,
+    restructuring_edges: list[tuple[GraphEdge, bool]],
+    id2new_nodes: dict[str, GraphNode],
+    restructuring_edges2new_nodes_id: dict[tuple[str, str], str],
+    use_lag_edge_optimization: bool,
+):
+    """Split a node into stages according to restructuring edges.
 
-    :param restructuring_edges: list[tuple[GraphEdge, bool]] - list of restructuring edges and bool flag of reversion
-    :param origin_node: GraphNode - Node to be divided into stages
-    :param id2new_nodes: GraphNodeDict - Dictionary with restructured new nodes id where the restructured nodes will
-        be written
-    :param restructuring_edges2new_nodes_id: dict[tuple[str, str], str] - Dictionary for matching edges in the original
-        work graph and IDs of new nodes that logically match those edges
-    :param use_lag_edge_optimization: bool - if true - considers lags amount in edges,
-        otherwise considers lags equal to zero and LagFinishStart edges as FinishStart edges
-    :return: Nothing
+    Разделить узел на этапы в соответствии с ребрами реструктуризации.
+
+    Args:
+        origin_node: Node to be divided into stages.
+            Узел, который необходимо разделить на этапы.
+        restructuring_edges: List of restructuring edges with a flag of reversion.
+            Список ребер реструктуризации и флаг разворота.
+        id2new_nodes: Mapping where new nodes will be stored.
+            Отображение, в которое будут записаны новые узлы.
+        restructuring_edges2new_nodes_id: Mapping from original edges to
+            identifiers of new nodes.
+            Отображение между исходными ребрами и идентификаторами новых узлов.
+        use_lag_edge_optimization: Whether to account for lags in edges.
+            Учитывать ли задержки в ребрах.
+
+    Returns:
+        None
+        None
     """
 
     def get_reqs_amounts(volume_proportion: float, reqs2amounts_accum: dict[str, list[int]]) \
@@ -326,16 +357,22 @@ def split_node_into_stages(origin_node: GraphNode, restructuring_edges: list[tup
         match_prev_edges_with_stage_nodes_id(restructuring_edges2new_nodes_id)
 
 
-def graph_restructuring(wg: WorkGraph, use_lag_edge_optimization: Optional[bool] = False) -> WorkGraph:
-    """
-    Rebuilds all edges into Finish-Start and Inseparable-Finish-Start edges
-    with the corresponding rebuilding of the nodes and returns new work graph
+def graph_restructuring(
+    wg: WorkGraph, use_lag_edge_optimization: Optional[bool] = False
+) -> WorkGraph:
+    """Rebuild all edges using only finish-start constraints.
 
-    :param wg: WorkGraph - The graph to be converted
-    :param use_lag_edge_optimization: bool - if true - considers lags amount in edges,
-        otherwise considers lags equal to zero and LagFinishStart edges as FinishStart edges
-    :return:
-        new_work_graph: WorkGraph - restructured graph
+    Перестроить все ребра, используя только зависимости "finish-start".
+
+    Args:
+        wg: The graph to be converted.
+            Граф для преобразования.
+        use_lag_edge_optimization: Whether to consider lags in edges.
+            Учитывать ли задержки в ребрах.
+
+    Returns:
+        Restructured work graph.
+        Реструктурированный граф работ.
     """
 
     def get_restructuring_edges(edges: list[GraphEdge], edge_type: EdgeType, is_edge_to_node: bool) \

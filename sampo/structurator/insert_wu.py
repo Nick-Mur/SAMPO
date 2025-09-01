@@ -1,20 +1,39 @@
+"""Routines for inserting single work units into a graph.
+
+Процедуры вставки отдельных рабочих операций в граф.
+"""
+
 from sampo.schemas.graph import GraphNode, EdgeType, WorkGraph
 from sampo.schemas.works import WorkUnit
 from sampo.structurator.prepare_wg_copy import prepare_work_graph_copy, new_start_finish
 
 
-def insert_work_unit(original_wg: WorkGraph, inserted_wu: WorkUnit,
-                     parents_edges: list[GraphNode] or list[tuple[GraphNode, float, EdgeType]],
-                     children_edges: list[GraphNode] or list[tuple[GraphNode, float, EdgeType]],
-                     change_id: bool = True) -> WorkGraph:
-    """
-    Inserts new node in the WorkGraph, based on given WorkUnit
-    :param original_wg: WorkGraph into which we insert new node
-    :param inserted_wu: WorkUnit on the basis of which we create new GraphNode
-    :param parents_edges: nodes which are supposed to be the parents of new GraphNode
-    :param children_edges: nodes which are supposed to be the children of new GraphNode
-    :param change_id: do ids in the new graph need to be changed
-    :return: new WorkGraph with inserted new node
+def insert_work_unit(
+    original_wg: WorkGraph,
+    inserted_wu: WorkUnit,
+    parents_edges: list[GraphNode] | list[tuple[GraphNode, float, EdgeType]],
+    children_edges: list[GraphNode] | list[tuple[GraphNode, float, EdgeType]],
+    change_id: bool = True,
+) -> WorkGraph:
+    """Insert a new node into a work graph.
+
+    Вставить новый узел в граф работ.
+
+    Args:
+        original_wg: Graph where the node will be inserted.
+            Граф, в который вставляется новый узел.
+        inserted_wu: Work unit used to create the node.
+            Производственная операция, из которой создается узел.
+        parents_edges: Parents for the new node.
+            Родительские узлы для нового узла.
+        children_edges: Children for the new node.
+            Дочерние узлы для нового узла.
+        change_id: Whether to generate new identifiers.
+            Нужно ли генерировать новые идентификаторы.
+
+    Returns:
+        New work graph with the inserted node.
+        Новый граф работ с вставленным узлом.
     """
     reduced_parent_edges = _reduce_to_tuple_type(parents_edges)
     reduced_children_edges = _reduce_to_tuple_type(children_edges)
