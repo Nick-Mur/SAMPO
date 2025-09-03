@@ -1,0 +1,22 @@
+Available Computational Backends
+Доступные вычислительные бэкенды
+
+DefaultComputationalBackend
+Бэкенд по умолчанию
+- Provides sequential computation within a single process.
+- Обеспечивает последовательные вычисления в одном процессе.
+- Caches scheduler and genetic algorithm parameters for reuse.
+- Кэширует параметры планировщика и генетического алгоритма для повторного использования.
+- Evaluates chromosomes by iterating through them and applying the fitness function.
+- Оценивает хромосомы, проходя по ним и применяя функцию приспособленности.
+
+MultiprocessingComputationalBackend
+Многопроцессорный бэкенд
+- Extends the default backend to run chromosome computations in parallel using `pathos.multiprocessing`.
+- Расширяет стандартный бэкенд для параллельного выполнения вычислений хромосом с использованием `pathos.multiprocessing`.
+- Requires a specified number of CPUs and manages a worker pool.
+- Требует указания числа CPU и управляет пулом рабочих процессов.
+- Shares cached scheduler information with child processes to avoid repeated setup.
+- Делится кэшированной информацией планировщика с дочерними процессами, чтобы избежать повторной настройки.
+- Generates the initial population and evaluates chromosomes concurrently across processes.
+- Генерирует начальную популяцию и оценивает хромосомы одновременно в нескольких процессах.
