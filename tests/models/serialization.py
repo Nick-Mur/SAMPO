@@ -18,7 +18,7 @@ class TestSimpleSerialization(AutoJSONSerializable['TestSimpleSerialization']):
 
 
 @dataclass
-class TestAutoJSONSerializable(AutoJSONSerializable['TestAutoJSONSerializable']):
+class AutoJSONSerializableExample(AutoJSONSerializable['AutoJSONSerializableExample']):
     int_field: int
     float_field: float
     array_field: list
@@ -29,7 +29,7 @@ class TestAutoJSONSerializable(AutoJSONSerializable['TestAutoJSONSerializable'])
     df_field: pd.DataFrame
     class_field: TestSimpleSerialization
     class_field2: TestSimpleSerialization
-    neighbor_info: 'TestAutoJSONSerializable'
+    neighbor_info: 'AutoJSONSerializableExample'
 
     ignored_fields = ['array_field', 'bool_field']
 
@@ -54,18 +54,18 @@ class TestAutoJSONSerializable(AutoJSONSerializable['TestAutoJSONSerializable'])
         r.value = value[1]
         return r
 
-    @custom_type_serializer('TestAutoJSONSerializable')
+    @custom_type_serializer('AutoJSONSerializableExample')
     def neighbourer(self, value) -> int:
         return value.int_field
 
     @classmethod
-    @custom_type_deserializer('TestAutoJSONSerializable')
-    def deneighbourer(cls, value) -> 'TestAutoJSONSerializable':
-        return TestAutoJSONSerializable(value, None, None, None, None, None, None, None, None, None, None)
+    @custom_type_deserializer('AutoJSONSerializableExample')
+    def deneighbourer(cls, value) -> 'AutoJSONSerializableExample':
+        return AutoJSONSerializableExample(value, None, None, None, None, None, None, None, None, None, None)
 
 
 @dataclass
-class TestJSONSerializable(JSONSerializable['TestJSONSerializable']):
+class JSONSerializableExample(JSONSerializable['JSONSerializableExample']):
     id: int
     name: str
     it1: int
@@ -81,7 +81,7 @@ class TestJSONSerializable(JSONSerializable['TestJSONSerializable']):
 
     @classmethod
     def _deserialize(cls, representation: T) -> JS:
-        r = object.__new__(TestJSONSerializable)
+        r = object.__new__(JSONSerializableExample)
         r.__dict__ = {
             'id': representation['id'],
             'name': representation['name'],
@@ -93,7 +93,7 @@ class TestJSONSerializable(JSONSerializable['TestJSONSerializable']):
 
 
 @dataclass
-class TestStrSerializable(StrSerializable['TestStrSerializable']):
+class StrSerializableExample(StrSerializable['StrSerializableExample']):
     id: int
     name: str
     description: list
@@ -104,7 +104,7 @@ class TestStrSerializable(StrSerializable['TestStrSerializable']):
     @classmethod
     def _deserialize(cls, str_representation: str) -> SS:
         s = str_representation.split('\n')
-        r = object.__new__(TestStrSerializable)
+        r = object.__new__(StrSerializableExample)
         r.name = s[0]
         r.id = int(s[1])
         r.description = ast.literal_eval(s[2])
