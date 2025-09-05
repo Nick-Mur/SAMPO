@@ -1,14 +1,18 @@
 from _pytest.fixtures import fixture
+import numpy as np
+import pytest
 
 from sampo.scheduler.timeline.momentum_timeline import MomentumTimeline
 from sampo.scheduler.utils import get_worker_contractor_pool
 from sampo.schemas.graph import GraphNode
-from sampo.schemas.requirements import WorkerReq
+from sampo.schemas.requirements import WorkerReq, ZoneReq
 from sampo.schemas.resources import Worker
 from sampo.schemas.schedule_spec import WorkSpec
 from sampo.schemas.time import Time
 from sampo.schemas.types import ScheduleEvent, EventType
 from sampo.schemas.works import WorkUnit
+from sampo.schemas.landscape import LandscapeConfiguration
+from sampo.schemas.zones import ZoneConfiguration
 
 
 @fixture
@@ -57,6 +61,77 @@ def test_insert_works_with_one_worker_kind(setup_timeline_context):
     for i, node in enumerate(nodes):
         worker_team = [Worker(id=str(i), name=worker_kind, count=worker_count // 2, contractor_id=contractor.id)]
         timeline.schedule(node, node2swork, worker_team, contractor, WorkSpec())
+
+
+def test_update_events_multiple_worker_types(setup_timeline_context):
+    """Verify event updates for several worker kinds.
+
+    Проверяет обновление событий для нескольких типов работников.
+    """
+    timeline, wg, contractors, worker_pool, worker_kinds = setup_timeline_context
+    if len(worker_kinds) < 2:
+        pytest.skip('Need at least two worker kinds')
+
+    contractor = contractors[0]
+    kinds = list(worker_kinds)[:2]
+
+    worker_reqs = []
+    team = []
+    for i, kind in enumerate(kinds):
+        count = contractor.workers[kind].count
+        worker_reqs.append(WorkerReq(kind=kind, volume=Time(5),
+                                     min_count=count, max_count=count))
+        team.append(Worker(id=str(i), name=kind, count=count,
+                           contractor_id=contractor.id))
+
+    wu = WorkUnit(id='m1', name='Multi', worker_reqs=worker_reqs)
+    node1 = GraphNode(work_unit=wu, parent_works=[])
+    node2 = GraphNode(work_unit=wu, parent_works=[node1])
+
+    node2swork = {}
+    timeline.schedule(node1, node2swork, team, contractor, WorkSpec())
+    timeline.schedule(node2, node2swork, team, contractor, WorkSpec())
+
+    for kind in kinds:
+        state = timeline._timeline[contractor.id][kind]
+        times = [ev.time for ev in state]
+        assert times == sorted(times)
+        assert all(ev.available_workers_count >= 0 for ev in state)
+        assert len(state) == 5
+
+
+def test_reschedule_respects_dependencies_and_zones(setup_timeline_context):
+    """Ensure rescheduling obeys dependencies and zones.
+
+    Проверяет соблюдение зависимостей и зон при повторном планировании.
+    """
+    _, wg, contractors, worker_pool, worker_kinds = setup_timeline_context
+    contractor = contractors[0]
+    worker_kind = next(iter(worker_kinds))
+    worker_req = WorkerReq(kind=worker_kind, volume=Time(5),
+                           min_count=1, max_count=1)
+    zone_a = ZoneReq(kind='zone1', required_status=2)
+    zone_b = ZoneReq(kind='zone1', required_status=1)
+
+    wu_a = WorkUnit(id='a', name='A', worker_reqs=[worker_req], zone_reqs=[zone_a])
+    wu_b = WorkUnit(id='b', name='B', worker_reqs=[worker_req], zone_reqs=[zone_b])
+    node_a = GraphNode(work_unit=wu_a, parent_works=[])
+    node_b = GraphNode(work_unit=wu_b, parent_works=[node_a])
+
+    landscape = LandscapeConfiguration(
+        zone_config=ZoneConfiguration(start_statuses={'zone1': 1},
+                                      time_costs=np.zeros((3, 3)))
+    )
+    timeline = MomentumTimeline(worker_pool, landscape)
+    team = [Worker(id='w', name=worker_kind, count=1,
+                   contractor_id=contractor.id)]
+    node2swork = {}
+    timeline.schedule(node_a, node2swork, team, contractor, WorkSpec())
+    timeline.schedule(node_b, node2swork, team, contractor, WorkSpec())
+
+    assert node2swork[node_b].start_end_time[0] >= node2swork[node_a].start_end_time[1]
+    assert node2swork[node_a].zones_pre
+    assert node2swork[node_b].zones_pre
 #
 # TODO
 # def test_update_resource_structure(setup_timeline, setup_worker_pool):

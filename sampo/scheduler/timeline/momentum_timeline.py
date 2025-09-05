@@ -168,16 +168,29 @@ class MomentumTimeline(Timeline):
                              parent_time: Time,
                              exec_time: Time,
                              passed_workers: list[Worker]) -> Time:
-        """
-        Find start time for the whole 'GraphNode'
+        """Find a start time that satisfies worker availability.
 
-        :param resource_timeline: dictionary that stores resource and its Timeline
-        :param inseparable_chain: list of GraphNodes that represent one big task,
-        that are divided into several dependent tasks
-        :param parent_time: the minimum start time
-        :param exec_time: the time of execution
-        :param passed_workers: list of passed workers. Should be IN THE SAME ORDER AS THE CORRESPONDING WREQS
-        :return:
+        Найти время начала, удовлетворяющее доступности работников.
+
+        Args:
+            resource_timeline (dict[str, SortedList[ScheduleEvent]]):
+                mapping of worker kinds to their timelines.
+                Отображение типов работников на их временные линии.
+            inseparable_chain (list[GraphNode]):
+                chain of nodes that must be scheduled together.
+                цепочка узлов, которые нужно планировать вместе.
+            spec (WorkSpec): scheduling specification.
+                спецификация планирования.
+            parent_time (Time): minimal start time from dependencies.
+                минимальное время начала по зависимостям.
+            exec_time (Time): total execution time of the chain.
+                суммарное время выполнения цепочки.
+            passed_workers (list[Worker]): workers assigned to the chain.
+                работники, назначенные на цепочку.
+
+        Returns:
+            Time: earliest feasible start time.
+            Time: самое раннее допустимое время старта.
         """
         # if it is a service unit, then it can be satisfied by any contractor at any moment
         # because no real workers are going to be used to execute the task,
@@ -193,11 +206,16 @@ class MomentumTimeline(Timeline):
 
         for node in inseparable_chain:
             for i, wreq in enumerate(node.work_unit.worker_reqs):
-                initial_event: ScheduleEvent = resource_timeline[wreq.kind][0]
+                state = resource_timeline[wreq.kind]
+                initial_event: ScheduleEvent = state[0]
                 assert initial_event.event_type is EventType.INITIAL
                 # if this contractor initially has fewer workers of this type, then needed...
                 if initial_event.available_workers_count < passed_workers[i].count:
                     return Time.inf()
+                for prev, cur in zip(state, state[1:]):
+                    assert prev.time <= cur.time
+                    assert prev.available_workers_count >= 0
+                assert state[-1].available_workers_count >= 0
 
         # here we look for the earliest time slot that can satisfy all the worker's specializations
         # we do it in that manner because each worker specialization can be treated separately
@@ -343,12 +361,26 @@ class MomentumTimeline(Timeline):
                         node: GraphNode,
                         worker_team: list[Worker],
                         spec: WorkSpec):
-        """
-        Inserts `chosen_workers` into the timeline with it's `inseparable_chain`
+        """Insert worker usage events into the timeline.
+
+        Вставить события использования работников во временную шкалу.
+
+        Args:
+            finish_time (Time): finish time of the scheduled work.
+                время окончания запланированной работы.
+            exec_time (Time): execution time of the work.
+                время выполнения работы.
+            node (GraphNode): scheduled graph node.
+                запланированный узел графа.
+            worker_team (list[Worker]): team assigned to the work.
+                команда, назначенная на работу.
+            spec (WorkSpec): scheduling specification.
+                спецификация планирования.
         """
         # if the work has zero execution time, then there is no need to take resources
         if exec_time == 0:
             return
+        assert finish_time >= exec_time
         # 7. for each worker's specialization of the chosen contractor being used by the task
         # we update counts of available workers on previously scheduled events
         # that lie between start and end of the task
@@ -362,6 +394,7 @@ class MomentumTimeline(Timeline):
 
         start = finish_time - exec_time
         end = finish_time
+        assert start <= end
         for w in worker_team:
             state = self._timeline[w.contractor_id][w.name]
             start_idx = state.bisect_right(start)
@@ -388,6 +421,11 @@ class MomentumTimeline(Timeline):
 
             state.add(ScheduleEvent(task_index, EventType.END, end, None, end_count))
 
+            for prev, cur in zip(state, state[1:]):
+                assert prev.time <= cur.time
+                assert prev.available_workers_count >= 0
+            assert state[-1].available_workers_count >= 0
+
     def schedule(self,
                  node: GraphNode,
                  node2swork: dict[GraphNode, ScheduledWork],
@@ -398,16 +436,52 @@ class MomentumTimeline(Timeline):
                  assigned_time: Optional[Time] = None,
                  assigned_parent_time: Time = Time(0),
                  work_estimator: WorkTimeEstimator = DefaultWorkEstimator()):
+        """Schedule node execution and update timelines.
+
+        Запланировать выполнение узла и обновить временные шкалы.
+
+        Args:
+            node (GraphNode): graph node to schedule.
+                узел графа для планирования.
+            node2swork (dict[GraphNode, ScheduledWork]): mapping for scheduled works.
+                отображение запланированных работ.
+            workers (list[Worker]): team assigned to the work.
+                команда, назначенная на работу.
+            contractor (Contractor): responsible contractor.
+                ответственный подрядчик.
+            spec (WorkSpec): scheduling specification.
+                спецификация планирования.
+            assigned_start_time (Optional[Time]): preassigned start time.
+                заранее назначенное время начала.
+            assigned_time (Optional[Time]): fixed total duration.
+                фиксированная общая длительность.
+            assigned_parent_time (Time): minimal start from parents.
+                минимальное время начала от родителей.
+            work_estimator (WorkTimeEstimator): estimator of work duration.
+                оценщик длительности работы.
+        """
         inseparable_chain = node.get_inseparable_chain_with_self()
-        start_time, _, exec_times = \
-            self.find_min_start_time_with_additional(node, workers, node2swork, spec, assigned_start_time,
-                                                     assigned_parent_time, work_estimator)
+        start_time, _, exec_times = (
+            self.find_min_start_time_with_additional(
+                node, workers, node2swork, spec, assigned_start_time,
+                assigned_parent_time, work_estimator))
         if assigned_time is not None:
             exec_times = get_exec_times_from_assigned_time_for_chain(inseparable_chain, assigned_time)
 
+        total_exec_time = sum(lag + t for lag, t in exec_times.values())
+        finish_time = start_time + total_exec_time
+
         # TODO Decide how to deal with exec_times(maybe we should remove using pre-computed exec_times)
-        self._schedule_with_inseparables(node, node2swork, inseparable_chain, spec,
-                                         workers, contractor, start_time, exec_times)
+        self._schedule_with_inseparables(
+            node, node2swork, inseparable_chain, spec,
+            workers, contractor, start_time, exec_times)
+
+        for w in workers:
+            state = self._timeline[w.contractor_id][w.name]
+            for prev, cur in zip(state, state[1:]):
+                assert prev.time <= cur.time
+                assert prev.available_workers_count >= 0
+            assert state[-1].available_workers_count >= 0
 
     def _schedule_with_inseparables(self,
                                     node: GraphNode,
