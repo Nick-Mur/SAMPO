@@ -11,6 +11,7 @@ from sampo.generator.environment.landscape import get_landscape_by_wg
 from sampo.generator.pipeline.extension import extend_names, extend_resources
 from sampo.generator.pipeline.project import get_small_graph, get_graph
 from sampo.schemas import LandscapeConfiguration, MaterialReq
+from sampo.schemas.contractor import Contractor
 from sampo.schemas.graph import WorkGraph
 
 
@@ -75,9 +76,13 @@ class SimpleSynthetic:
         Returns:
             WorkGraph: Generated work graph.
                 Сгенерированный граф работ.
+
+        Raises:
+            ValueError: Negative volume or lag encountered.
+                ValueError: Обнаружен отрицательный объём или лаг.
         """
 
-        return get_graph(
+        wg = get_graph(
             mode=mode,
             cluster_counts=cluster_counts,
             bottom_border=bottom_border,
@@ -85,7 +90,16 @@ class SimpleSynthetic:
             rand=self._rand,
         )
 
-    def contractor(self, pack_worker_count: float):
+        for node in wg.nodes:
+            if node.work_unit.volume < 0:
+                raise ValueError('Work volumes cannot be negative')
+            for edge in node.edges_from:
+                if edge.lag is not None and edge.lag < 0:
+                    raise ValueError('Lag values cannot be negative')
+
+        return wg
+
+    def contractor(self, pack_worker_count: float) -> Contractor:
         """Generate contractor with default parameters.
 
         Генерирует подрядчика с параметрами по умолчанию.
@@ -152,8 +166,8 @@ class SimpleSynthetic:
                 Граф работ с материалами.
 
         Raises:
-            ValueError: Borders exceed materials list.
-                Границы превышают список материалов.
+            ValueError: Borders are invalid or exceed materials list.
+                ValueError: Границы некорректны или выходят за список материалов.
         """
 
         if materials_name is None:
@@ -172,6 +186,9 @@ class SimpleSynthetic:
                 bottom_border = len(materials_name) // 2
             if top_border is None:
                 top_border = len(materials_name)
+
+        if bottom_border < 0 or top_border < 0 or bottom_border > top_border:
+            raise ValueError('Borders must be non-negative and bottom <= top')
 
         if bottom_border > len(materials_name) or top_border > len(materials_name):
             raise ValueError('The borders are out of the range of materials_name')
