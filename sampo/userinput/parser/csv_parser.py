@@ -14,7 +14,7 @@ from sampo.schemas.contractor import Contractor
 from sampo.schemas.graph import WorkGraph
 from sampo.schemas.resources import Worker
 from sampo.schemas.time_estimator import DefaultWorkEstimator, WorkTimeEstimator
-from sampo.userinput.parser.exception import InputDataException
+from sampo.userinput.parser.exception import InputDataException, WorkGraphBuildingException
 from sampo.userinput.parser.general_build import add_graph_info, topsort_graph_df, build_work_graph, \
     preprocess_graph_df, break_loops_in_input_graph
 from sampo.userinput.parser.history import set_connections_info
@@ -84,23 +84,36 @@ class CSVParser:
         Returns:
             pd.DataFrame: Preprocessed work information.
                 pd.DataFrame: предварительно обработанные данные о работах.
+
+        Raises:
+            WorkGraphBuildingException: If CSV data are corrupted or incomplete.
+                WorkGraphBuildingException: если CSV-данные повреждены или неполные.
         """
-        graph_df = pd.read_csv(project_info, sep=sep_wg, header=0) if isinstance(project_info,
-                                                                                 str) else project_info.copy()
-        history_df = pd.read_csv(history_data, sep=sep_history) if isinstance(history_data,
-                                                                              str) else history_data.copy()
+        try:
+            graph_df = pd.read_csv(project_info, sep=sep_wg, header=0) if isinstance(project_info,
+                                                                                     str) else project_info.copy()
+            history_df = pd.read_csv(history_data, sep=sep_history) if isinstance(history_data,
+                                                                                  str) else history_data.copy()
 
-        if 'predecessor_ids' not in graph_df.columns and history_df.shape[0] == 0:
-            raise InputDataException(
-                'you have neither history data about tasks nor tasks\' connection info in received .csv file.')
+            if 'predecessor_ids' not in graph_df.columns and history_df.shape[0] == 0:
+                raise InputDataException(
+                    'you have neither history data about tasks nor tasks\' connection info in received .csv file.')
 
-        graph_df = preprocess_graph_df(graph_df, name_mapper)
-        id2ind = {graph_df.loc[i, 'activity_id']: i for i in range(len(graph_df.index))}
-        works_info = set_connections_info(graph_df, history_df, mapper=name_mapper,
-                                          all_connections=all_connections,
-                                          change_connections_info=change_connections_info, id2ind=id2ind)
+            graph_df = preprocess_graph_df(graph_df, name_mapper)
+            id2ind = {graph_df.loc[i, 'activity_id']: i for i in range(len(graph_df.index))}
+            works_info = set_connections_info(graph_df, history_df, mapper=name_mapper,
+                                              all_connections=all_connections,
+                                              change_connections_info=change_connections_info, id2ind=id2ind)
 
-        return break_loops_in_input_graph(works_info)
+            return break_loops_in_input_graph(works_info)
+        except InputDataException:
+            raise
+        except Exception as exc:
+            # Catch generic issues with CSV structure and rethrow as a domain-specific exception
+            # Перехватывает общие ошибки структуры CSV и генерирует исключение предметной области
+            raise WorkGraphBuildingException(
+                f'Failed to build work graph from CSV: {exc}'
+            ) from exc
 
     @staticmethod
     def work_graph(works_info: pd.DataFrame,
