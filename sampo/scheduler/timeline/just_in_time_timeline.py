@@ -191,15 +191,16 @@ class JustInTimeTimeline(Timeline):
                         node: GraphNode,
                         worker_team: list[Worker],
                         spec: WorkSpec):
-        """
-        Adds given `worker_team` to the timeline at the moment `finish`
+        """Return passed workers to the timeline at ``finish_time``.
 
-        :param finish_time:
-        :param exec_time:
-        :param node:
-        :param worker_team:
-        :param spec: work specification
-        :return:
+        Возвращает переданных работников на временную шкалу в ``finish_time``.
+
+        Args:
+            finish_time: Moment when workers become available again.
+            exec_time: Duration of executed work (unused).
+            node: Scheduled node (unused).
+            worker_team: Team of workers that should be freed.
+            spec: Work specification.
         """
         if spec.is_independent:
             # squash all the timeline to the last point
@@ -216,19 +217,30 @@ class JustInTimeTimeline(Timeline):
                 needed_count = worker.count
                 worker_timeline = self._timeline[(worker.contractor_id, worker.name)]
                 # Consume needed workers
-                while needed_count > 0:
+                while needed_count > 0 and worker_timeline:
                     next_time, next_count = worker_timeline.pop()
-                    if next_count > needed_count or len(worker_timeline) == 0:
-                        worker_timeline.append((next_time, next_count - needed_count))
-                        break
-                    needed_count -= next_count
+                    if next_count >= needed_count:
+                        remainder = next_count - needed_count
+                        if remainder > 0:
+                            worker_timeline.append((next_time, remainder))
+                        needed_count = 0
+                    else:
+                        needed_count -= next_count
 
                 # Add to the right place
                 worker_timeline.append((finish_time, worker.count))
                 ind = len(worker_timeline) - 1
                 while ind > 0 and worker_timeline[ind][0] > worker_timeline[ind - 1][0]:
-                    worker_timeline[ind], worker_timeline[ind - 1] = worker_timeline[ind - 1], worker_timeline[ind]
+                    worker_timeline[ind], worker_timeline[ind - 1] = (
+                        worker_timeline[ind - 1],
+                        worker_timeline[ind],
+                    )
                     ind -= 1
+                # Merge events with the same time
+                if ind > 0 and worker_timeline[ind][0] == worker_timeline[ind - 1][0]:
+                    t, cnt_prev = worker_timeline[ind - 1]
+                    worker_timeline[ind - 1] = (t, cnt_prev + worker_timeline[ind][1])
+                    worker_timeline.pop(ind)
 
     def schedule(self,
                  node: GraphNode,
