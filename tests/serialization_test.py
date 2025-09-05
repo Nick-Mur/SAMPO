@@ -7,8 +7,8 @@ import pytest
 from sampo.schemas.graph import WorkGraph
 from sampo.schemas.schedule import Schedule
 from sampo.schemas.serializable import S
-from tests.models.serialization import TestSimpleSerialization, TestAutoJSONSerializable, TestJSONSerializable, \
-    TestStrSerializable
+from tests.models.serialization import TestSimpleSerialization, AutoJSONSerializableExample, JSONSerializableExample, \
+    StrSerializableExample
 
 STORAGE = './tmp_storage'  # Test files tmp storage
 
@@ -17,13 +17,13 @@ def stored_file(name) -> str:
     return os.path.join(STORAGE, name)
 
 
-@pytest.yield_fixture(scope='class')
+@pytest.fixture(scope='class')
 def setup_core_resources(request):
     array_sample = [-100, 200.2, 'True', False]
     test_sample = TestSimpleSerialization()
     test_sample.key = '1,2,3'
     test_sample.value = [1, 2, 3]
-    auto_json = TestAutoJSONSerializable(1,
+    auto_json = AutoJSONSerializableExample(1,
                                          .5,
                                          array_sample,
                                          {str(i): i for i in array_sample},
@@ -34,8 +34,8 @@ def setup_core_resources(request):
                                          test_sample,
                                          test_sample, None)
     auto_json.neighbor_info = auto_json
-    manual_json = TestJSONSerializable(1, 'test', 100, '100', True)
-    manual_str = TestStrSerializable(1, 'test', [True, 'test2', {'a': 1, 'b': 2}])
+    manual_json = JSONSerializableExample(1, 'test', 100, '100', True)
+    manual_str = StrSerializableExample(1, 'test', [True, 'test2', {'a': 1, 'b': 2}])
     return {
         'auto_json': auto_json,
         'manual_json': manual_json,
