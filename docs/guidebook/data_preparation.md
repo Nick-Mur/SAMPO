@@ -1,21 +1,15 @@
-# Подготовка данных для планировщика SAMPO
+# Data Preparation / Подготовка данных
 
-## Оглавление
+This guide explains how to prepare graphs and contractors for the SAMPO scheduler. For hands-on examples, see [data_preparation.ipynb](../../examples/data_preparation.ipynb).
+В этом руководстве описано, как подготовить графы и подрядчиков для планировщика SAMPO. Интерактивные примеры см. в ноутбуке [data_preparation.ipynb](../../examples/data_preparation.ipynb).
 
-* [1. Генерация графа](#1-генерация-графа)
+## Введение
 
-  * [1.1 Синтетические графы](#11-синтетические-графы)
-  * [1.2 Сохранение/загрузка WorkGraph](#12-сохранениезагрузка-workgraph)
-* [2. Генерация подрядчиков](#2-генерация-подрядчиков)
+Здесь приведены базовые шаги для создания графов работ и ресурсов подрядчиков, которые могут быть запланированы в SAMPO.
 
-  * [2.1 Ручная генерация подрядчика](#21-ручная-генерация-подрядчика)
-  * [2.2 Синтетическая генерация подрядчиков](#22-синтетическая-генерация-подрядчиков)
-  * [2.3 Генерация подрядчика из графа](#23-генерация-подрядчика-из-графа)
-  * [2.4 Сохранение/загрузка Contractor](#24-сохранениезагрузка-contractor)
+## Генерация графа
 
-## 1. Генерация графа
-
-### 1.1 Синтетические графы
+### Синтетические графы
 
 * Импорт: `SimpleSynthetic`, `SyntheticGraphType`.
 * Воспроизводимость: фиксируем зерно `r_seed`.
@@ -29,6 +23,7 @@ from sampo.generator.types import SyntheticGraphType
 r_seed = 231
 ss = SimpleSynthetic(r_seed)
 
+# Basic synthetic graph
 # Базовый синтетический граф
 simple_wg = ss.work_graph(
     mode=SyntheticGraphType.GENERAL,
@@ -37,6 +32,7 @@ simple_wg = ss.work_graph(
     top_border=200,
 )
 
+# Advanced synthetic graph
 # Продвинутый синтетический граф
 adv_wg = ss.advanced_work_graph(
     works_count_top_border=2000,
@@ -44,8 +40,10 @@ adv_wg = ss.advanced_work_graph(
     uniq_resources=100,
 )
 ```
+This snippet demonstrates synthetic graph generation (see [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
+Этот пример демонстрирует генерацию синтетического графа (см. [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
 
-### 1.2 Сохранение/загрузка WorkGraph
+### Сохранение/загрузка WorkGraph
 
 * Сохранение: `WorkGraph.dump(dir, name)` → `name.json`.
 * Загрузка: `WorkGraph.load(dir, name)`.
@@ -54,14 +52,18 @@ adv_wg = ss.advanced_work_graph(
 ```python
 from sampo.schemas.graph import WorkGraph
 
+# Save and load the graph
+# Сохранение и загрузка графа
 simple_wg.dump(".", "wg")
 loaded_simple_wg = WorkGraph.load(".", "wg")
 assert simple_wg.vertex_count == loaded_simple_wg.vertex_count
 ```
+This snippet demonstrates persisting a WorkGraph (see [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
+Этот пример демонстрирует сохранение WorkGraph (см. [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
 
-## 2. Генерация подрядчиков
+## Генерация подрядчиков
 
-### 2.1 Ручная генерация подрядчика
+### Ручная генерация подрядчика
 
 * Импорт: `Contractor`, `Worker`, `uuid4`.
 * Заполняем имя и набор ресурсов с количествами.
@@ -71,6 +73,8 @@ from uuid import uuid4
 from sampo.schemas.contractor import Contractor
 from sampo.schemas.resources import Worker
 
+# Create contractor manually
+# Ручное создание подрядчика
 manual_contractor = Contractor(
     id=str(uuid4()),
     name="OOO Berezka",
@@ -79,35 +83,53 @@ manual_contractor = Contractor(
     },
 )
 ```
+This snippet shows manual contractor definition (see [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
+Этот пример показывает ручное определение подрядчика (см. [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
 
-### 2.2 Синтетическая генерация подрядчиков
+### Синтетическая генерация подрядчиков
 
 * Быстрая генерация тестовых подрядчиков по масштабу ресурсообеспечения.
 
 ```python
+# Generate contractors with increasing capacity
+# Генерация подрядчиков с увеличивающимся масштабом
 c5 = ss.contractor(5)
 c10 = ss.contractor(10)
 c15 = ss.contractor(15)
 ```
-
-### 2.3 Генерация подрядчика из графа
+This snippet demonstrates synthetic contractor generation (see [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
+Этот пример демонстрирует синтетическую генерацию подрядчиков (см. [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
+### Генерация подрядчика из графа
 
 * Генерация покрытия потребностей конкретного графа.
 
 ```python
 from sampo.generator.environment import get_contractor_by_wg
 
+# Generate contractor based on a work graph
+# Генерация подрядчика на основе графа
 contractors = [get_contractor_by_wg(simple_wg)]
 ```
+This snippet derives a contractor from a WorkGraph (see [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
+Этот пример получает подрядчика из WorkGraph (см. [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
 
-### 2.4 Сохранение/загрузка Contractor
+### Сохранение/загрузка Contractor
 
 * Сохранение: `Contractor.dump(dir, name)` → `name.json`.
 * Загрузка: `Contractor.load(dir, name)`.
 
 ```python
+# Save and load the contractor
+# Сохранение и загрузка подрядчика
 contractors[0].dump(".", "contractor")
 
 from sampo.schemas.contractor import Contractor
 loaded_contractor = Contractor.load(".", "contractor")
 ```
+This snippet demonstrates contractor persistence (see [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
+Этот пример демонстрирует сохранение подрядчика (см. [data_preparation.ipynb](../../examples/data_preparation.ipynb)).
+
+## Итоги
+
+Мы рассмотрели базовые способы создания графов работ и подрядчиков, а также их сохранение и загрузку. Дополнительные примеры приведены в ноутбуке [data_preparation.ipynb](../../examples/data_preparation.ipynb).
+
